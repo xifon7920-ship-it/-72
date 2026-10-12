@@ -1,0 +1,61 @@
+-- Auto Farm Construction Script for สายเลือดอาชีวะ
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("สายเลือดอาชีวะ | Auto Farm Construction", "DarkTheme")
+
+local Tab = Window:NewTab("ฟาร์มงานก่อสร้าง")
+local Section = Tab:NewSection("ระบบ Auto Farm งาน")
+
+-- เปิด/ปิด Auto Farm เชื่อมเหล็ก / ทำงานก่อสร้าง
+Section:NewToggle("เปิด/ปิด ฟาร์มงานก่อสร้างอัตโนมัติ", "วนลูปทำภารกิจเชื่อมเหล็กรับเงินอัตโนมัติ", function(state)
+    getgenv().AutoFarmJob = state
+    
+    task.spawn(function()
+        while getgenv().AutoFarmJob do
+            task.wait(0.5)
+            pcall(function()
+                local player = game.Players.LocalPlayer
+                local char = player.Character
+                if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+                
+                -- ตรวจสอบและถือเครื่องมือทำงาน (Tool)
+                local tool = player.Backpack:FindFirstChildOfClass("Tool") or char:FindFirstChildOfClass("Tool")
+                if tool and tool.Parent ~= char then
+                    char.Humanoid:EquipTool(tool)
+                end
+                
+                -- ค้นหา Prompt หรือจุดกดทำงานก่อสร้างรอบๆ ตัว
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("ProximityPrompt") and (obj.Parent.Position - char.HumanoidRootPart.Position).Magnitude <= 15 then
+                        -- จำลองการกด ProximityPrompt อัตโนมัติ
+                        fireproximityprompt(obj)
+                    end
+                end
+                
+                -- สั่งเปิดใช้งาน Tool (ถ้ามีเครื่องมือเชื่อมเหล็กอยู่ในมือ)
+                local activeTool = char:FindFirstChildOfClass("Tool")
+                if activeTool then
+                    activeTool:Activate()
+                end
+            end)
+        end
+    end)
+end)
+
+-- ปุ่มเดินทะลุกำแพง (Noclip) ป้องกันการติดสิ่งกีดขวางในไซต์งาน
+Section:NewToggle("เปิดเดินทะลุกำแพง (Noclip)", "ป้องกันการติดโครงเหล็กหรือสิ่งก่อสร้าง", function(state)
+    getgenv().JobNoclip = state
+    game:GetService("RunService").Stepped:Connect(function()
+        if getgenv().JobNoclip and game.Players.LocalPlayer.Character then
+            for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
+end)
+
+-- ปรับความเร็วเดิน
+Section:NewSlider("ความเร็วเดิน", "ปรับสปีดเดินในพื้นที่ก่อสร้าง", 250, 16, function(s)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
+end)
